@@ -1,18 +1,12 @@
 import os
 import logging
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    filters,
-    CallbackQueryHandler
-)
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from handlers.command_handlers import (
     start, help_command,
     search_command, ayah_command,
-    tafsir_command, surah_command
+    tafsir_command
 )
-from handlers.message_handlers import handle_text, button_callback
+from handlers.message_handlers import handle_text
 
 # تكوين التسجيل
 logging.basicConfig(
@@ -34,13 +28,9 @@ def main():
     app.add_handler(CommandHandler("search", search_command))
     app.add_handler(CommandHandler("ayah", ayah_command))
     app.add_handler(CommandHandler("tafsir", tafsir_command))
-    app.add_handler(CommandHandler("surah", surah_command))
     
-    # معالجة الرسائل العادية
+    # معالجة الرسائل العادية (بحث تلقائي)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    
-    # معالجة ضغطات الأزرار
-    app.add_handler(CallbackQueryHandler(button_callback))
     
     # إعداد Webhook
     async def post_init(app):
