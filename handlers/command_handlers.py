@@ -68,3 +68,22 @@ async def tafsir_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     result = await tafsir_service.get_tafsir(reference)
     await update.message.reply_text(result)
+
+async def surah_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """معالج أمر /surah"""
+    if not context.args:
+        await update.message.reply_text("⚠️ الرجاء إدخال رقم السورة (1-114)")
+        return
+    
+    try:
+        surah_num = int(context.args[0])
+        if 1 <= surah_num <= 114:
+            result, reply_markup = await surah_service.get_surah(surah_num)
+            if result:
+                await update.message.reply_text(result, reply_markup=reply_markup)
+            else:
+                await update.message.reply_text("⚠️ تعذر جلب السورة، يرجى المحاولة لاحقاً")
+        else:
+            await update.message.reply_text("⚠️ رقم السورة يجب أن يكون بين 1 و 114")
+    except ValueError:
+        await update.message.reply_text("⚠️ الرجاء إدخال رقم صحيح بين 1 و 114")
