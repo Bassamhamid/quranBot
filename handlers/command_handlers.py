@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import logging
 from services import ayah_service
+from services import search_service
 
 logger = logging.getLogger(__name__)
 
