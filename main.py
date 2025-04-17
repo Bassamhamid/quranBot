@@ -6,7 +6,7 @@ from handlers.command_handlers import (
     search_command, ayah_command,
     tafsir_command
 )
-from handlers.message_handlers import search_verses
+from handlers.message_handlers import handle_text
 
 # تكوين التسجيل
 logging.basicConfig(
@@ -30,7 +30,7 @@ def main():
     app.add_handler(CommandHandler("tafsir", tafsir_command))
     
     # معالجة الرسائل العادية (بحث تلقائي)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search_verses))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     
     # إعداد Webhook
     async def post_init(app):
