@@ -1,10 +1,16 @@
 import requests
 import logging
+import re
 from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
 QURAN_API = "http://api.alquran.cloud/v1"
+
+def remove_tashkeel(text):
+    """إزالة التشكيل من النص"""
+    tashkeel_pattern = re.compile(r'[\u0617-\u061A\u064B-\u0652]')
+    return tashkeel_pattern.sub('', text)
 
 async def search_verses(query: str, max_results: int = 5) -> str:
     """البحث عن آيات (بدون تفسير)"""
@@ -12,8 +18,8 @@ async def search_verses(query: str, max_results: int = 5) -> str:
         if not query.strip():
             return "⚠️ الرجاء إدخال نص للبحث"
 
-        # تنظيف الاستعلام
-        clean_query = ''.join([c for c in query if c.isalpha() or c.isspace() or c in [':', '-']])
+        # تنظيف الاستعلام من التشكيل
+        clean_query = remove_tashkeel(query)
         encoded_query = quote(clean_query.strip())
 
         url = f"{QURAN_API}/search/{encoded_query}/all/ar"
