@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
-QURAN_API = "https://api.quran.com/v4"
+QURAN_API = "http://api.alquran.cloud/v1"
 
 async def search_verses(query: str, max_results: int = 5) -> str:
     """البحث عن آيات (بدون تفسير)"""
@@ -15,8 +15,8 @@ async def search_verses(query: str, max_results: int = 5) -> str:
         # تنظيف الاستعلام
         clean_query = ''.join([c for c in query if c.isalpha() or c.isspace() or c in [':', '-']])
         encoded_query = quote(clean_query.strip())
-        
-        url = f"{QURAN_API}/search?q={encoded_query}&language=ar"
+
+        url = f"{QURAN_API}/search/{encoded_query}/all/ar"
         logger.info(f"Search URL: {url}")
 
         response = requests.get(url, timeout=15)
@@ -29,14 +29,15 @@ async def search_verses(query: str, max_results: int = 5) -> str:
 
         matches = data.get('data', {}).get('matches', [])
         if not matches:
-            return "⚠️ لا توجد آيات تحتوي على هذه الكلمة"
+            return "⚠️ لا توجد آيات تحتوي على هذا النص"
 
-        # تجهيز النتائج (آيات فقط)
+        # تجهيز النتائج (آيات فقط بدون تفسير)
         results = []
         for match in matches[:max_results]:
-            verse_key = match['verse_key']
-            text = match['text_uthmani']
-            results.append(f"📖 {verse_key}:\n{text}\n")
+            surah = match['surah']['name']
+            ayah_num = match['numberInSurah']
+            text = match['text']
+            results.append(f"📖 {surah} (آية {ayah_num}):\n{text}\n")
 
         return "\n".join(results)
 
