@@ -1,8 +1,18 @@
 import os
 import logging
-import requests
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    CallbackQueryHandler
+)
+from handlers.command_handlers import (
+    start, help_command,
+    search_command, ayah_command,
+    tafsir_command, surah_command
+)
+from handlers.message_handlers import handle_text, button_callback
 
 # تكوين التسجيل
 logging.basicConfig(
@@ -15,65 +25,22 @@ TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 WEBHOOK_URL = os.environ['WEBHOOK_URL']
 PORT = int(os.environ.get('PORT', 10000))
 
-async def search_quran(query: str) -> str:
-    try:
-        # تسجيل الاستعلام للتحقق
-        logger.info(f"Searching for: {query}")
-        
-        url = f"http://api.alquran.cloud/v1/search/{query}/all/ar"
-        response = requests.get(url, timeout=10)
-        
-        # تسجيل تفاصيل الاستجابة
-        logger.info(f"API Response: {response.status_code}")
-        logger.info(f"Response content: {response.text[:200]}...")
-        
-        response.raise_for_status()
-        data = response.json()
-        
-        if not data.get('data', {}).get('matches'):
-            return "⚠️ لم يتم العثور على نتائج"
-            
-        results = []
-        for match in data['data']['matches'][:3]:  # أول 3 نتائج
-            surah = match['surah']['name']
-            ayah = match['numberInSurah']
-            text = match['text']
-            results.append(f"📖 {surah} (آية {ayah}):\n{text}\n")
-            
-        return "\n".join(results)
-        
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request error: {str(e)}")
-        return "❌ تعذر الاتصال بخدمة القرآن"
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        return "❌ حدث خطأ غير متوقع"
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحباً! أرسل لي أي كلمة أو عبارة للبحث عنها في القرآن الكريم")
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        query = update.message.text
-        logger.info(f"Received message: {query}")
-        
-        # تجاهل الأوامر التي تبدأ ب /
-        if query.startswith('/'):
-            return
-            
-        results = await search_quran(query)
-        logger.info(f"Sending results: {results[:50]}...")
-        
-        await update.message.reply_text(results)
-    except Exception as e:
-        logger.error(f"Message handling error: {str(e)}")
-        await update.message.reply_text("❌ حدث خطأ في معالجة طلبك")
-
 def main():
     app = Application.builder().token(TOKEN).build()
     
+    # تسجيل معالجات الأوامر
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("search", search_command))
+    app.add_handler(CommandHandler("ayah", ayah_command))
+    app.add_handler(CommandHandler("tafsir", tafsir_command))
+    app.add_handler(CommandHandler("surah", surah_command))
+    
+    # معالجة الرسائل العادية
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    
+    # معالجة ضغطات الأزرار
+    app.add_handler(CallbackQueryHandler(button_callback))
     
     # إعداد Webhook
     async def post_init(app):
@@ -81,10 +48,11 @@ def main():
             url=WEBHOOK_URL,
             drop_pending_updates=True
         )
-        logger.info(f"Webhook configured at: {WEBHOOK_URL}")
+        logger.info(f"✅ تم تهيئة الويب هوك بنجاح: {WEBHOOK_URL}")
     
     app.post_init = post_init
     
+    # تشغيل البوت
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
