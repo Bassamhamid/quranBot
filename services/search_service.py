@@ -19,10 +19,13 @@ async def search_verses(query: str, max_results: int = 5) -> str:
         async with httpx.AsyncClient() as client:
             response = await client.get(url, timeout=15)
 
+        logger.info(f"Response text: {response.text}")
+
         if response.status_code == 404:
             return "🔍 لم يتم العثور على نتائج، جرب صيغة أخرى"
 
         response.raise_for_status()
+
         data = response.json()
 
         matches = data.get('data', {}).get('matches', [])
@@ -33,7 +36,7 @@ async def search_verses(query: str, max_results: int = 5) -> str:
         for match in matches:
             surah = match['verse']['surah_name']
             ayah_num = match['verse']['verse_number']
-            text = match['verse']['text_uthmani']  # نص الآية مشكّل
+            text = match['verse']['text_uthmani']
             results.append(f"📖 {surah} (آية {ayah_num}):\n{text}\n")
 
         return "\n".join(results)
