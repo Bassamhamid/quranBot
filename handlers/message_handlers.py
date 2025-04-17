@@ -1,34 +1,18 @@
-import requests
-import logging
-from urllib.parse import quote
+from telegram import Update
+from telegram.ext import ContextTypes
+from services import search_service
 
-logger = logging.getLogger(__name__)
-
-QURAN_API = "http://api.alquran.cloud/v1"
-
-async def handle_text(query: str, max_results: int = 5) -> str:
-    """البحث عن آيات تحتوي على النص (بدون تفسير)"""
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """معالجة الرسائل العادية (بحث تلقائي)"""
     try:
-        encoded_query = quote(query)
-        url = f"{QURAN_API}/search/{encoded_query}/all/ar"
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
+        query = update.message.text.strip()
         
-        data = response.json()
-        matches = data.get('data', {}).get('matches', [])
-        
-        if not matches:
-            return "⚠️ لم يتم العثور على آيات تحتوي على هذه الكلمة"
+        if not query or query.startswith('/'):
+            return
             
-        results = []
-        for match in matches[:max_results]:
-            surah = match['surah']['name']
-            ayah_num = match['numberInSurah']
-            text = match['text']
-            results.append(f"📖 {surah} (آية {ayah_num}):\n{text}\n")
-        
-        return "\n".join(results)
+        await update.message.reply_chat_action(action="typing")
+        results = await search_service.search_verses(query)
+        await update.message.reply_text(results)
         
     except Exception as e:
-        logger.error(f"Search error: {str(e)}")
-        return "❌ حدث خطأ أثناء البحث، يرجى المحاولة لاحقاً"
+        await update.message.reply_text("❌ حدث خطأ، جرب لاحقاً")
