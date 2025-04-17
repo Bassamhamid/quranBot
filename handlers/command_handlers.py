@@ -1,6 +1,9 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from services import search_service, tafsir_service
+import logging
+from services import ayah_service
+
+logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_msg = """
@@ -41,6 +44,37 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     except Exception as e:
         await update.message.reply_text("❌ فشل البحث، جرب لاحقاً")
+
+async def ayah(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """معالجة أمر /ayah لجلب آية محددة"""
+    try:
+        # الحصول على المرجع من الأوامر (مثال: /ayah 2:255)
+        reference = ' '.join(context.args).strip()
+        
+        if not reference:
+            await update.message.reply_text(
+                "⚙️ استخدام صحيح:\n"
+                "/ayah [سورة:آية]\n"
+                "مثال:\n"
+                "/ayah 1:1\n"
+                "/ayah 2:255"
+            )
+            return
+
+        await update.message.reply_chat_action(action="typing")
+        
+        # جلب الآية من الخدمة
+        result = await ayah_service.get_ayah(reference)
+        
+        await update.message.reply_text(result)
+        
+    except Exception as e:
+        logger.error(f"Error in ayah command: {str(e)}")
+        await update.message.reply_text(
+            "❌ حدث خطأ أثناء جلب الآية. يرجى:\n"
+            "- التأكد من كتابة المرجع بشكل صحيح\n"
+            "- المحاولة لاحقاً"
+        )
 
 async def tafsir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """معالجة أمر /tafsir (لجلب التفسير فقط)"""
