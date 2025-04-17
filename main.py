@@ -2,8 +2,9 @@ import os
 import logging
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from handlers.command_handlers import (
-    start, help_command,
-    search_command, ayah_command,
+    start,
+    help_command,
+    search_command,
     tafsir_command
 )
 from handlers.message_handlers import handle_text
@@ -22,15 +23,17 @@ PORT = int(os.environ.get('PORT', 10000))
 def main():
     app = Application.builder().token(TOKEN).build()
     
-    # تسجيل معالجات الأوامر
+    # تسجيل المعالجات
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("search", search_command))
-    app.add_handler(CommandHandler("ayah", ayah_command))
     app.add_handler(CommandHandler("tafsir", tafsir_command))
     
-    # معالجة الرسائل العادية (بحث تلقائي)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    # معالجة الرسائل العادية
+    app.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        handle_text
+    ))
     
     # إعداد Webhook
     async def post_init(app):
@@ -38,11 +41,11 @@ def main():
             url=WEBHOOK_URL,
             drop_pending_updates=True
         )
-        logger.info(f"✅ تم تهيئة الويب هوك بنجاح: {WEBHOOK_URL}")
+        logger.info(f"✅ تم تهيئة الويب هوك: {WEBHOOK_URL}")
     
     app.post_init = post_init
     
-    # تشغيل البوت
+    # التشغيل
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
