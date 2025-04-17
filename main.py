@@ -22,10 +22,24 @@ TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 WEBHOOK_URL = os.environ['WEBHOOK_URL']
 PORT = int(os.environ.get('PORT', 10000))
 
+async def post_init(application):
+    """تهيئة الويب هوك عند التشغيل"""
+    try:
+        await application.bot.set_webhook(
+            url=WEBHOOK_URL,
+            drop_pending_updates=True,
+            allowed_updates=["message", "callback_query"]
+        )
+        logger.info(f"✅ تم تعيين الويب هوك بنجاح: {WEBHOOK_URL}")
+    except Exception as e:
+        logger.error(f"❌ فشل تعيين الويب هوك: {str(e)}")
+        raise
+
 def main():
     # إنشاء التطبيق
     app = Application.builder() \
         .token(TOKEN) \
+        .post_init(post_init) \
         .build()
 
     # تعيين معالجات الأوامر
@@ -35,32 +49,18 @@ def main():
     app.add_handler(CommandHandler("ayah", ayah))
     app.add_handler(CommandHandler("tafsir", tafsir))
 
-    # معالج للرسائل النصية العادية
+    # معالج للرسائل العادية
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         handle_text
     ))
-
-    # وظيفة تعيين الويب هوك عند بدء التشغيل
-    async def set_webhook(app):
-        try:
-            await app.bot.set_webhook(
-                url=WEBHOOK_URL,
-                drop_pending_updates=True,
-                allowed_updates=["message", "callback_query"]
-            )
-            logger.info(f"✅ تم تعيين الويب هوك بنجاح: {WEBHOOK_URL}")
-        except Exception as e:
-            logger.error(f"❌ فشل تعيين الويب هوك: {str(e)}")
-            raise
 
     # تشغيل السيرفر مع تعيين الويب هوك
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
         webhook_url=WEBHOOK_URL,
-        drop_pending_updates=True,
-        on_startup=set_webhook
+        drop_pending_updates=True
     )
 
 if __name__ == "__main__":
