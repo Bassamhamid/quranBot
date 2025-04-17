@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 QURAN_API = "http://api.alquran.cloud/v1"
 
-async def search_verses(query: str, max_results: int = 5) -> str:
+async def handle_text(query: str, max_results: int = 5) -> str:
     """البحث عن آيات تحتوي على النص (بدون تفسير)"""
     try:
         encoded_query = quote(query)
