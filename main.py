@@ -30,7 +30,7 @@ def main():
     app.add_handler(CommandHandler("tafsir", tafsir_command))
     
     # معالجة الرسائل العادية (بحث تلقائي)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search_verses))
     
     # إعداد Webhook
     async def post_init(app):
