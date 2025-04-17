@@ -1,63 +1,34 @@
-from telegram import Update
-from telegram.ext import ContextTypes, CallbackContext
-from services import search_service, ayah_service, tafsir_service, surah_service
+import requests
+import logging
+from urllib.parse import quote
 
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """معالجة الرسائل النصية العادية (بحث تلقائي عن آيات)"""
-    query = update.message.text.strip()
-    
-    if not query:
-        await update.message.reply_text("🔍 أرسل كلمة أو عبارة للبحث عنها في القرآن")
-        return
-        
-    # تجاهل إذا كانت الرسالة أمراً
-    if query.startswith('/'):
-        return
-        
-    results = await search_service.search_verses(query)
-    await update.message.reply_text(results)
+logger = logging.getLogger(__name__)
 
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """معالجة الرسائل النصية العادية"""
-    text = update.message.text
-    
-    # إذا بدأ النص برقم (يفترض أنه رقم سورة)
-    if text.isdigit():
-        surah_num = int(text)
-        if 1 <= surah_num <= 114:
-            result, _ = await surah_service.get_surah(surah_num)
-            if result:
-                await update.message.reply_text(result)
-            else:
-                await update.message.reply_text("⚠️ تعذر جلب السورة، يرجى المحاولة لاحقاً")
-        else:
-            await update.message.reply_text("⚠️ رقم السورة يجب أن يكون بين 1 و 114")
-    else:
-        # إذا كان النص طويلاً يفترض أنه بحث
-        if len(text.split()) > 2:
-            result = await search_service.search_verses(text)
-            await update.message.reply_text(result)
-        else:
-            await update.message.reply_text("""
-🔍 للبحث أرسل نصاً طويلاً أو استخدم الأوامر:
-/search [نص] - للبحث في القرآن
-/ayah [رقم] - لجلب آية
-/surah [رقم] - لجلب سورة
-""")
+QURAN_API = "http://api.alquran.cloud/v1"
 
-async def button_callback(update: Update, context: CallbackContext):
-    """معالجة ضغطات الأزرار (لتصفح السور)"""
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data.startswith('surah_'):
-        _, surah_num, page = query.data.split('_')
-        surah_num = int(surah_num)
-        page = int(page)
+async def search_verses(query: str, max_results: int = 5) -> str:
+    """البحث عن آيات تحتوي على النص (بدون تفسير)"""
+    try:
+        encoded_query = quote(query)
+        url = f"{QURAN_API}/search/{encoded_query}/all/ar"
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
         
-        result, reply_markup = await surah_service.get_surah(surah_num, page)
+        data = response.json()
+        matches = data.get('data', {}).get('matches', [])
         
-        if result:
-            await query.edit_message_text(result, reply_markup=reply_markup)
-        else:
-            await query.edit_message_text("⚠️ تعذر تحميل الصفحة التالية")
+        if not matches:
+            return "⚠️ لم يتم العثور على آيات تحتوي على هذه الكلمة"
+            
+        results = []
+        for match in matches[:max_results]:
+            surah = match['surah']['name']
+            ayah_num = match['numberInSurah']
+            text = match['text']
+            results.append(f"📖 {surah} (آية {ayah_num}):\n{text}\n")
+        
+        return "\n".join(results)
+        
+    except Exception as e:
+        logger.error(f"Search error: {str(e)}")
+        return "❌ حدث خطأ أثناء البحث، يرجى المحاولة لاحقاً"
