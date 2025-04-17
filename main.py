@@ -3,10 +3,10 @@ import logging
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from handlers.command_handlers import (
     start,
-    help_command,
-    search_command,
-    ayah_command,  # تمت الإضافة
-    tafsir_command
+    help,
+    search,
+    ayah,
+    tafsir
 )
 from handlers.message_handlers import handle_text
 
@@ -22,30 +22,37 @@ WEBHOOK_URL = os.environ['WEBHOOK_URL']
 PORT = int(os.environ.get('PORT', 10000))
 
 async def post_init(app):
-    """وظيفة تهيئة الويب هوك"""
+    """تهيئة الويب هوك عند التشغيل"""
     try:
         await app.bot.set_webhook(
             url=WEBHOOK_URL,
             drop_pending_updates=True,
             allowed_updates=["message", "callback_query"]
         )
-        logger.info(f"✅ تم تعيين الويب هوك بنجاح على: {WEBHOOK_URL}")
+        logger.info(f"✅ تم تعيين الويب هوك بنجاح: {WEBHOOK_URL}")
     except Exception as e:
-        logger.error(f"❌ فشل تعيين الويب هوك: {e}")
+        logger.error(f"❌ فشل تعيين الويب هوك: {str(e)}")
+        raise
+
+async def post_shutdown(app):
+    """تنظيف الويب هوك عند الإيقاف"""
+    await app.bot.delete_webhook()
+    logger.info("✅ تم إيقاف الويب هوك")
 
 def main():
     # إنشاء تطبيق البوت
     app = Application.builder() \
         .token(TOKEN) \
         .post_init(post_init) \
+        .post_shutdown(post_shutdown) \
         .build()
 
     # تسجيل معالجات الأوامر
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("search", search_command))
-    app.add_handler(CommandHandler("ayah", ayah_command))  # تمت الإضافة
-    app.add_handler(CommandHandler("tafsir", tafsir_command))
+    app.add_handler(CommandHandler("help", help))
+    app.add_handler(CommandHandler("search", search))
+    app.add_handler(CommandHandler("ayah", ayah))
+    app.add_handler(CommandHandler("tafsir", tafsir))
 
     # معالجة الرسائل العادية
     app.add_handler(MessageHandler(
@@ -58,6 +65,7 @@ def main():
         listen="0.0.0.0",
         port=PORT,
         webhook_url=WEBHOOK_URL,
+        secret_token=os.environ.get('WEBHOOK_SECRET', None),
         drop_pending_updates=True
     )
 
