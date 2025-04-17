@@ -34,17 +34,11 @@ async def post_init(app):
         logger.error(f"❌ فشل تعيين الويب هوك: {str(e)}")
         raise
 
-async def post_shutdown(app):
-    """تنظيف الويب هوك عند الإيقاف"""
-    await app.bot.delete_webhook()
-    logger.info("✅ تم إيقاف الويب هوك")
-
 def main():
     # إنشاء تطبيق البوت
     app = Application.builder() \
         .token(TOKEN) \
         .post_init(post_init) \
-        .post_shutdown(post_shutdown) \
         .build()
 
     # تسجيل معالجات الأوامر
@@ -65,7 +59,6 @@ def main():
         listen="0.0.0.0",
         port=PORT,
         webhook_url=WEBHOOK_URL,
-        secret_token=os.environ.get('WEBHOOK_SECRET', None),
         drop_pending_updates=True
     )
 
