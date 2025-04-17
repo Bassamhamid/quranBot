@@ -1,31 +1,23 @@
-import requests
+import httpx
 import logging
-import re
 from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
-QURAN_API = "http://api.alquran.cloud/v1"
-
-def remove_tashkeel(text):
-    """إزالة التشكيل من النص"""
-    tashkeel_pattern = re.compile(r'[\u0617-\u061A\u064B-\u0652]')
-    return tashkeel_pattern.sub('', text)
+QURAN_API = "https://api.quran.com/api/v4"
 
 async def search_verses(query: str, max_results: int = 5) -> str:
-    """البحث عن آيات (بدون تفسير)"""
+    """البحث عن آيات"""
     try:
         if not query.strip():
             return "⚠️ الرجاء إدخال نص للبحث"
 
-        # تنظيف الاستعلام من التشكيل
-        clean_query = remove_tashkeel(query)
-        encoded_query = quote(clean_query.strip())
-
-        url = f"{QURAN_API}/search/{encoded_query}/all/ar"
+        encoded_query = quote(query.strip())
+        url = f"{QURAN_API}/search?q={encoded_query}&language=ar&limit={max_results}"
         logger.info(f"Search URL: {url}")
 
-        response = requests.get(url, timeout=15)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=15)
 
         if response.status_code == 404:
             return "🔍 لم يتم العثور على نتائج، جرب صيغة أخرى"
@@ -35,19 +27,18 @@ async def search_verses(query: str, max_results: int = 5) -> str:
 
         matches = data.get('data', {}).get('matches', [])
         if not matches:
-            return "⚠️ لا توجد آيات تحتوي على هذا النص"
+            return "⚠️ لا توجد آيات تحتوي على هذه العبارة"
 
-        # تجهيز النتائج (آيات فقط بدون تفسير)
         results = []
-        for match in matches[:max_results]:
-            surah = match['surah']['name']
-            ayah_num = match['numberInSurah']
-            text = match['text']
+        for match in matches:
+            surah = match['verse']['surah_name']
+            ayah_num = match['verse']['verse_number']
+            text = match['verse']['text_uthmani']  # نص الآية مشكّل
             results.append(f"📖 {surah} (آية {ayah_num}):\n{text}\n")
 
         return "\n".join(results)
 
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
         logger.error(f"Search API Error: {str(e)}")
         return "❌ تعذر الاتصال بخدمة البحث"
     except Exception as e:
