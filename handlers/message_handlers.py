@@ -3,6 +3,21 @@ from telegram.ext import ContextTypes, CallbackContext
 from services import search_service, ayah_service, tafsir_service, surah_service
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """معالجة الرسائل النصية العادية (بحث تلقائي عن آيات)"""
+    query = update.message.text.strip()
+    
+    if not query:
+        await update.message.reply_text("🔍 أرسل كلمة أو عبارة للبحث عنها في القرآن")
+        return
+        
+    # تجاهل إذا كانت الرسالة أمراً
+    if query.startswith('/'):
+        return
+        
+    results = await search_service.search_verses(query)
+    await update.message.reply_text(results)
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """معالجة الرسائل النصية العادية"""
     text = update.message.text
     
