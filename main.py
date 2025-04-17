@@ -6,7 +6,7 @@ from handlers.command_handlers import (
     search_command, ayah_command,
     tafsir_command
 )
-from handlers.message_handlers import handle_text
+from handlers.message_handlers import search_verses
 
 # تكوين التسجيل
 logging.basicConfig(
