@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from services import search_service, tafsir_service
+from services import search_service, tafsir_service, ayah_service
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_msg = """
@@ -8,6 +8,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 🔍 أرسل أي كلمة مباشرة للبحث عن الآيات
 /search [نص] - بحث متقدم
+/ayah [سورة:آية] - جلب آية محددة  # تمت الإضافة
 /tafsir [سورة:آية] - تفسير آية
 /help - المساعدة
 """
@@ -15,33 +16,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_msg = """
-⚡ *طريقة الاستخدام* ⚡
+⚡ *أوامر البوت* ⚡
 
-1. البحث المباشر:
-   - اكتب أي كلمة (مثال: الرحمن)
-   
-2. الأوامر:
-   - /search [نص] - بحث في الآيات
-   - /tafsir [سورة:آية] - تفسير آية
-   - مثال: /tafsir 1:1
+/ayah [مرجع] - جلب آية محددة
+مثال: 
+/ayah 1:1  - الآية 1 من سورة الفاتحة
+/ayah 2:255 - آية الكرسي
 """
     await update.message.reply_text(help_msg, parse_mode='Markdown')
 
-async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """معالجة أمر /search"""
+async def ayah_command(update: Update, context: ContextTypes.DEFAULT_TYPE):  # المعالج الجديد
+    """جلب آية محددة"""
     try:
-        query = ' '.join(context.args).strip()
-        
-        if not query:
-            await update.message.reply_text("⚡ استخدم: /search [الكلمة]")
+        reference = ' '.join(context.args).strip()
+        if not reference:
+            await update.message.reply_text("⚡ استخدم: /ayah [سورة:آية]\nمثال: /ayah 2:255")
             return
             
         await update.message.reply_chat_action(action="typing")
-        results = await search_service.search_verses(query, max_results=10)
-        await update.message.reply_text(results)
+        result = await ayah_service.get_ayah(reference)
+        await update.message.reply_text(result)
         
     except Exception as e:
-        await update.message.reply_text("❌ فشل البحث، جرب كلمات أخرى")
+        await update.message.reply_text("❌ فشل جلب الآية، تحقق من المرجع")
 
 async def tafsir_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """معالجة أمر /tafsir"""
