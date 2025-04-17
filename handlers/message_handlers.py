@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 from services import search_service
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """معالجة الرسائل العادية (بحث تلقائي)"""
+    """معالجة الرسائل العادية (للبحث عن الآيات فقط)"""
     try:
         query = update.message.text.strip()
         
