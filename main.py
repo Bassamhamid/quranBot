@@ -4,38 +4,36 @@ import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler
 
-# تكوين التسجيل
+# إعداد السجل
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
+# قراءة المتغيرات من البيئة
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 
 async def search(update: Update, context):
-    # الحصول على النص من المستخدم
     query = ' '.join(context.args)
     if not query:
         await update.message.reply_text("❌ من فضلك أرسل كلمة للبحث.")
         return
 
-    # تنفيذ البحث في واجهة برمجة التطبيقات
-    url = f"https://api.quran.com/api/v4/search?q={query}"
+    url = f"https://api.quran.com/api/v4/search?q={query}&language=ar"
     try:
         response = requests.get(url)
         data = response.json()
 
-        # طباعة الاستجابة للتحقق من هيكل البيانات
-        print("استجابة API:", data)
+        # طباعة الاستجابة في السجل
+        logger.info(f"استجابة API: {data}")
 
-        if 'data' in data and data['data']:
-            results = data['data']
-            # تحديد عدد النتائج لإظهارها
-            result_text = "تم العثور على النتائج التالية:\n"
-            for result in results[:5]:  # عرض أول 5 نتائج
-                result_text += f"الآية {result['verse_key']} : {result['text']}\n"
+        if 'data' in data and 'matches' in data['data'] and data['data']['matches']:
+            results = data['data']['matches']
+            result_text = "تم العثور على النتائج:\n\n"
+            for result in results[:5]:
+                result_text += f"الآية {result['verse_key']}:\n{result['text']}\n\n"
             await update.message.reply_text(result_text)
         else:
             await update.message.reply_text("❌ لم يتم العثور على نتائج.")
@@ -44,15 +42,12 @@ async def search(update: Update, context):
         await update.message.reply_text("❌ حدث خطأ أثناء الاتصال بـ API.")
 
 def main():
-    # إنشاء تطبيق البوت
     app = Application.builder() \
         .token(TOKEN) \
         .build()
 
-    # تسجيل معالج الأمر "بحث"
     app.add_handler(CommandHandler("search", search))
 
-    # تشغيل البوت
     app.run_webhook(
         listen="0.0.0.0",
         port=10000,
