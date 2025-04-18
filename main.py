@@ -2,7 +2,7 @@ import logging
 import os
 import requests
 from telegram import Update
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 # إعداد السجل
 logging.basicConfig(
@@ -15,10 +15,15 @@ logger = logging.getLogger(__name__)
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 
-async def search(update: Update, context):
+# أمر /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("مرحبًا بك! ارسل /search ثم الكلمة التي تريد البحث عنها في القرآن.")
+
+# أمر /search
+async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = ' '.join(context.args)
     if not query:
-        await update.message.reply_text("❌ من فضلك أرسل كلمة للبحث.")
+        await update.message.reply_text("❌ من فضلك أرسل كلمة بعد الأمر.")
         return
 
     url = f"https://api.quran.com/api/v4/search?q={query}&language=ar"
@@ -26,7 +31,6 @@ async def search(update: Update, context):
         response = requests.get(url)
         data = response.json()
 
-        # طباعة الاستجابة في السجل
         logger.info(f"استجابة API: {data}")
 
         if 'data' in data and 'matches' in data['data'] and data['data']['matches']:
@@ -42,12 +46,13 @@ async def search(update: Update, context):
         await update.message.reply_text("❌ حدث خطأ أثناء الاتصال بـ API.")
 
 def main():
-    app = Application.builder() \
-        .token(TOKEN) \
-        .build()
+    app = Application.builder().token(TOKEN).build()
 
+    # إضافة أوامر
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("search", search))
 
+    # تشغيل الويب هوك
     app.run_webhook(
         listen="0.0.0.0",
         port=10000,
