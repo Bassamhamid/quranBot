@@ -1,3 +1,10 @@
+from telegram import Update
+from telegram.ext import ContextTypes
+from services import search_service
+import logging
+
+logger = logging.getLogger(__name__)
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         query = update.message.text.strip()
