@@ -1,59 +1,53 @@
 import os
 import logging
-import requests
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from handlers.command_handlers import start, help, search, ayah, tafsir
+from handlers.message_handlers import handle_text
 
-# اللوق
+# تكوين التسجيل
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
 )
+logger = logging.getLogger(__name__)
 
-BOT_TOKEN = os.environ['BOT_TOKEN']
+TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 WEBHOOK_URL = os.environ['WEBHOOK_URL']
 PORT = int(os.environ.get('PORT', 10000))
 
-# start command
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحبًا! أرسل /search <كلمة> للبحث في القرآن.")
-
-# search command
-async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("اكتب هكذا:\n/search رحمة")
-        return
-
-    query = " ".join(context.args)
-    api_url = f"https://api.quran.com/api/v4/search?q={query}"
-    headers = {"Accept": "application/json"}
-
+async def post_init(app):
+    """تهيئة الويب هوك"""
     try:
-        response = requests.get(api_url, headers=headers)
-        data = response.json()
-
-        if "data" in data and data["data"]["count"] > 0:
-            results = data["data"]["matches"]
-            message = "\n\n".join([f"{r['text']}" for r in results[:5]])
-        else:
-            message = "❌ لم يتم العثور على نتائج."
-
+        await app.bot.set_webhook(
+            url=WEBHOOK_URL,
+            drop_pending_updates=True,
+            allowed_updates=["message"]
+        )
+        logger.info(f"✅ تم تعيين الويب هوك: {WEBHOOK_URL}")
     except Exception as e:
-        logging.error(f"❌ خطأ في الاتصال بـ API: {e}")
-        message = "حدث خطأ أثناء الاتصال بالخدمة."
+        logger.error(f"❌ فشل تعيين الويب هوك: {e}")
+        raise
 
-    await update.message.reply_text(message)
-
-# التطبيق
-if __name__ == '__main__':
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    # ربط الأوامر
+def main():
+    app = Application.builder().token(TOKEN).post_init(post_init).build()
+    
+    # تسجيل معالجات الأوامر
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help))
     app.add_handler(CommandHandler("search", search))
-
-    # إعداد webhook
+    app.add_handler(CommandHandler("ayah", ayah))
+    app.add_handler(CommandHandler("tafsir", tafsir))
+    
+    # معالجة الرسائل العادية
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    
+    # تشغيل البوت
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
-        webhook_url=f"{WEBHOOK_URL}"
+        webhook_url=WEBHOOK_URL,
+        drop_pending_updates=True
     )
+
+if __name__ == "__main__":
+    main()
