@@ -1,23 +1,27 @@
-import logging
 import os
+import logging
 import requests
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+)
 
-# إعداد السجل
+# إعداد اللوجات
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# قراءة المتغيرات من البيئة
-TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-WEBHOOK_URL = os.getenv('WEBHOOK_URL')
+# إعداد التوكن وبيانات الويب هوك من متغيرات البيئة
+BOT_TOKEN = os.environ['BOT_TOKEN']
+WEBHOOK_URL = os.environ['WEBHOOK_URL']
+PORT = int(os.environ.get('PORT', 10000))
 
 # أمر /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحبًا بك! ارسل /search ثم الكلمة التي تريد البحث عنها في القرآن.")
+    await update.message.reply_text("مرحبًا! أرسل /search متبوعًا بالكلمة للبحث في القرآن.")
 
 # أمر /search
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -29,8 +33,9 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = f"https://api.quran.com/api/v4/search?q={query}&language=ar"
     try:
         response = requests.get(url)
-        data = response.json()
+        logger.info(f"Response Text: {response.text}")  # طباعة استجابة API
 
+        data = response.json()
         logger.info(f"استجابة API: {data}")
 
         if 'data' in data and 'matches' in data['data'] and data['data']['matches']:
@@ -45,19 +50,19 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"❌ خطأ في الاتصال بـ API: {e}")
         await update.message.reply_text("❌ حدث خطأ أثناء الاتصال بـ API.")
 
+# دالة تشغيل البوت
 def main():
-    app = Application.builder().token(TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).build()
 
-    # إضافة أوامر
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("search", search))
+    # أوامر البوت
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("search", search))
 
     # تشغيل الويب هوك
-    app.run_webhook(
+    application.run_webhook(
         listen="0.0.0.0",
-        port=10000,
+        port=PORT,
         webhook_url=WEBHOOK_URL,
-        drop_pending_updates=True
     )
 
 if __name__ == "__main__":
