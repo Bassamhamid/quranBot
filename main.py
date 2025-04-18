@@ -27,8 +27,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text
     url = f"https://api.quran.com/api/v4/search?q={query}"
+    headers = {
+        "Accept": "application/json"
+    }
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         data = response.json()
 
         if "data" in data and data["data"]["count"] > 0:
