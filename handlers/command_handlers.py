@@ -48,9 +48,15 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ayah(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        reference = ' '.join(context.args).strip()
+        reference = ''.join(context.args).strip()  # إزالة جميع المسافات
         if not reference:
-            await update.message.reply_text("📖 اكتب رقم السورة والآية:\n/ayah 2:255")
+            await update.message.reply_text(
+                "📖 استخدام صحيح:\n"
+                "/ayah سورة:آية\n"
+                "مثال:\n"
+                "/ayah 1:1\n"
+                "/ayah 2:255"
+            )
             return
             
         await update.message.reply_chat_action(action="typing")
@@ -58,8 +64,8 @@ async def ayah(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(result)
         
     except Exception as e:
-        logger.error(f"Ayah error: {e}")
-        await update.message.reply_text("❌ فشل جلب الآية، تحقق من التنسيق")
+        logger.error(f"Ayah command error: {e}")
+        await update.message.reply_text("❌ حدث خطأ، تأكد من كتابة المرجع بشكل صحيح")
 
 async def tafsir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
