@@ -1,69 +1,58 @@
 import os
 import logging
-import requests
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-)
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import requests
 
-# إعداد اللوجات
+# إعداد اللوق
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
-logger = logging.getLogger(__name__)
 
-# إعداد التوكن وبيانات الويب هوك من متغيرات البيئة
-BOT_TOKEN = os.environ['BOT_TOKEN']
-WEBHOOK_URL = os.environ['WEBHOOK_URL']
-PORT = int(os.environ.get('PORT', 10000))
+# قراءة المتغيرات من البيئة بطريقة آمنة
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+PORT = int(os.environ.get("PORT", "10000"))
 
-# أمر /start
+# تحقق من وجود التوكن
+if not BOT_TOKEN:
+    logging.error("❌ BOT_TOKEN غير موجود في متغيرات البيئة")
+    exit(1)
+
+# دالة start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحبًا! أرسل /search متبوعًا بالكلمة للبحث في القرآن.")
+    await update.message.reply_text("مرحبًا! أرسل لي أي كلمة للبحث عنها في القرآن.")
 
-# أمر /search
+# دالة البحث
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = ' '.join(context.args)
-    if not query:
-        await update.message.reply_text("❌ من فضلك أرسل كلمة بعد الأمر.")
-        return
-
-    url = f"https://api.quran.com/api/v4/search?q={query}&language=ar"
+    query = update.message.text
+    url = f"https://api.quran.com/api/v4/search?q={query}"
     try:
         response = requests.get(url)
-        logger.info(f"Response Text: {response.text}")  # طباعة استجابة API
-
         data = response.json()
-        logger.info(f"استجابة API: {data}")
 
-        if 'data' in data and 'matches' in data['data'] and data['data']['matches']:
-            results = data['data']['matches']
-            result_text = "تم العثور على النتائج:\n\n"
-            for result in results[:5]:
-                result_text += f"الآية {result['verse_key']}:\n{result['text']}\n\n"
-            await update.message.reply_text(result_text)
+        if "data" in data and data["data"]["count"] > 0:
+            results = data["data"]["matches"]
+            message = "\n\n".join([f"{r['text']}" for r in results[:5]])  # أول 5 نتائج
         else:
-            await update.message.reply_text("❌ لم يتم العثور على نتائج.")
+            message = "❌ لم يتم العثور على نتائج."
+
     except Exception as e:
-        logger.error(f"❌ خطأ في الاتصال بـ API: {e}")
-        await update.message.reply_text("❌ حدث خطأ أثناء الاتصال بـ API.")
+        logging.error(f"❌ خطأ في الاتصال بـ API: {e}")
+        message = "حدث خطأ أثناء الاتصال بالخدمة."
 
-# دالة تشغيل البوت
-def main():
-    application = Application.builder().token(BOT_TOKEN).build()
+    await update.message.reply_text(message)
 
-    # أوامر البوت
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("search", search))
+# التطبيق
+app = Application.builder().token(BOT_TOKEN).build()
 
-    # تشغيل الويب هوك
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_url=WEBHOOK_URL,
-    )
+# الهاندلرز
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search))
 
-if __name__ == "__main__":
-    main()
+# تشغيل البوت بالويب هوك
+app.run_webhook(
+    listen="0.0.0.0",
+    port=PORT,
+    webhook_url=WEBHOOK_URL
+)
