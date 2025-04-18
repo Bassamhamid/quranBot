@@ -1,35 +1,25 @@
-import os
-import logging
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import requests
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+import requests, os, logging
 
-# إعداد اللوق
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+logging.basicConfig(level=logging.INFO)
 
-# قراءة المتغيرات من البيئة بطريقة آمنة
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
-PORT = int(os.environ.get("PORT", "10000"))
+BOT_TOKEN = os.environ['BOT_TOKEN']
+WEBHOOK_URL = os.environ['WEBHOOK_URL']
+PORT = int(os.environ.get('PORT', 10000))
 
-# تحقق من وجود التوكن
-if not BOT_TOKEN:
-    logging.error("❌ BOT_TOKEN غير موجود في متغيرات البيئة")
-    exit(1)
-
-# دالة start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحبًا! أرسل لي أي كلمة للبحث عنها في القرآن.")
+    await update.message.reply_text("مرحبًا! أرسل /search <كلمة> للبحث في القرآن.")
 
-# دالة البحث
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.message.text
+    if not context.args:
+        await update.message.reply_text("اكتب الأمر بالشكل:\n/search كلمة")
+        return
+
+    query = " ".join(context.args)
     url = f"https://api.quran.com/api/v4/search?q={query}"
-    headers = {
-        "Accept": "application/json"
-    }
+    headers = {"Accept": "application/json"}
+
     try:
         response = requests.get(url, headers=headers)
         data = response.json()
@@ -46,16 +36,14 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(message)
 
-# التطبيق
-app = Application.builder().token(BOT_TOKEN).build()
+if __name__ == '__main__':
+    app = Application.builder().token(BOT_TOKEN).build()
 
-# الهاندلرز
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("search", search))
 
-# تشغيل البوت بالويب هوك
-app.run_webhook(
-    listen="0.0.0.0",
-    port=PORT,
-    webhook_url=WEBHOOK_URL
-)
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url=f"{WEBHOOK_URL}/webhook"
+        )
